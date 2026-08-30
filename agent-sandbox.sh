@@ -74,7 +74,18 @@ bind_if_exists "$HOME/.copilot"
 bind_if_exists "$HOME/.gemini"
 bind_if_exists "$HOME/.pi"
 
+# ~/.cache
 bind_if_exists "$HOME/.cache"
+
+mask_if_exists "$HOME/.cache/thumbnails"
+mask_if_exists "$HOME/.cache/BraveSoftware"
+mask_if_exists "$HOME/.cache/chromium"
+mask_if_exists "$HOME/.cache/mozilla"
+mask_if_exists "$HOME/.cache/torbrowser"
+mask_if_exists "$HOME/.cache/com.bitwarden.desktop"
+mask_if_exists "$HOME/.cache/keepassxc"
+mask_if_exists "$HOME/.cache/TelegramDesktop"
+mask_if_exists "$HOME/.cache/TeamSpeak"
 
 # ~/.config
 # bind_if_exists "$HOME/.config"
