@@ -129,7 +129,7 @@ mask_if_exists "$HOME/Games"
 mask_if_exists "$HOME/Music"
 mask_if_exists "$HOME/Photos"
 mask_if_exists "$HOME/Pictures"
-mask_if_exists "$HOME/Projects"
+# mask_if_exists "$HOME/Projects" # symlinks are evil
 mask_if_exists "$HOME/Videos"
 mask_if_exists "$HOME/Work"
 
