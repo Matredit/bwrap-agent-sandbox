@@ -4,14 +4,14 @@ A simple Bubblewrap sandbox for CLI coding agents.
 
 Designed for Omarchy Linux, where by default agents run without any sandboxing in _bypassing all permissions_ mode. This wrapper leaves the environment permissive enough for tools like `mise` to function, while strictly locking down system integrity and masking sensitive personal data. The host filesystem is read-only by default.
 
-**Installation**
-
+**Installation**  
+(requires bubblewrap)  
 ```bash
 chmod +x agent-sandbox.sh
 mv agent-sandbox.sh ~/.local/bin/agent-sandbox
 ```
 
-**Usage**
+**Usage**  
 Pass one or more workspace directories using `-w`, followed by `--`, and then your agent command. The specified workspaces will be fully read-write.
 
 ```bash
