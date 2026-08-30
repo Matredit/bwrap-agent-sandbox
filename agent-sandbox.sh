@@ -75,8 +75,44 @@ bind_if_exists "$HOME/.gemini"
 bind_if_exists "$HOME/.pi"
 
 bind_if_exists "$HOME/.cache"
-bind_if_exists "$HOME/.local"
-bind_if_exists "$HOME/.config"
+
+# ~/.config
+# bind_if_exists "$HOME/.config"
+bind_if_exists "$HOME/.config/mise"
+bind_if_exists "$HOME/.config/opencode"
+
+mask_if_exists "$HOME/.config/1Password"
+mask_if_exists "$HOME/.config/Bitwarden"
+mask_if_exists "$HOME/.config/keepassxc"
+mask_if_exists "$HOME/.config/BraveSoftware"
+mask_if_exists "$HOME/.config/chromium"
+mask_if_exists "$HOME/.config/google-chrome"
+mask_if_exists "$HOME/.config/google-chrome-beta"
+mask_if_exists "$HOME/.config/google-chrome-unstable"
+mask_if_exists "$HOME/.config/microsoft-edge"
+mask_if_exists "$HOME/.config/microsoft-edge-dev"
+mask_if_exists "$HOME/.config/mozilla"
+mask_if_exists "$HOME/.config/torbrowser"
+mask_if_exists "$HOME/.config/vivaldi"
+mask_if_exists "$HOME/.config/vivaldi-snapshot"
+mask_if_exists "$HOME/.config/discord"
+mask_if_exists "$HOME/.config/Signal"
+mask_if_exists "$HOME/.config/TeamSpeak"
+mask_if_exists "$HOME/.config/obsidian"
+
+# ~/.local
+# bind_if_exists "$HOME/.local"
+bind_if_exists "$HOME/.local/share/mise"
+bind_if_exists "$HOME/.local/share/opencode"
+bind_if_exists "$HOME/.local/share/opentui"
+bind_if_exists "$HOME/.local/state/mise"
+bind_if_exists "$HOME/.local/state/opencode"
+
+mask_if_exists "$HOME/.local/share/keyrings"
+mask_if_exists "$HOME/.local/share/TelegramDesktop"
+mask_if_exists "$HOME/.local/share/torbrowser"
+mask_if_exists "$HOME/.local/share/Trash"
+
 
 
 # 4. Masked/Hidden Directories
