@@ -5,6 +5,10 @@ set -euo pipefail
 WORKSPACES=()
 COMMAND=()
 
+# empty file instead of /dev/null for masking files
+EMPTY_FILE=$(mktemp)
+trap 'rm -f "$EMPTY_FILE"' EXIT  # Clean up automatically when script exits
+
 # 1. Parse arguments: Extract workspaces and the final command
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -59,7 +63,7 @@ mask_if_exists() {
 
 mask_file_if_exists() {
   if [[ -f "$1" ]]; then
-    BWRAP_ARGS+=(--ro-bind /dev/null "$1")
+    BWRAP_ARGS+=(--ro-bind "$EMPTY_FILE" "$1") # ro is crucial, prevents cross-contamination
   fi
 }
 
