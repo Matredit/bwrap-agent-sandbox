@@ -5,7 +5,7 @@ set -euo pipefail
 WORKSPACES=()
 COMMAND=()
 
-# empty file instead of /dev/null for masking files
+# Empty file instead of /dev/null for masking files
 EMPTY_FILE=$(mktemp)
 trap 'rm -f "$EMPTY_FILE"' EXIT  # Clean up automatically when script exits
 
@@ -48,122 +48,127 @@ BWRAP_ARGS=(
   --tmpfs /tmp   # Isolated scratchpad; prevents reading host /tmp sockets
 )
 
-# Helper functions to prevent bwrap crashes if a directory doesn't exist on the host
-bind_if_exists() {
-  if [[ -d "$1" ]]; then
-    BWRAP_ARGS+=(--bind "$1" "$1")
-  fi
-}
+# 3. Configuration Arrays (Declarative Setup)
+WRITABLE_DIRS=(
+  # Top-level agent folders
+  "$HOME/.claude"
+  "$HOME/.codex"
+  "$HOME/.copilot"
+  "$HOME/.gemini"
+  "$HOME/.pi"
+  
+  # Base Cache
+  "$HOME/.cache"
+  
+  # Specific Configs
+  "$HOME/.config/mise"
+  "$HOME/.config/opencode"
+  
+  # Specific Local States
+  "$HOME/.local/share/mise"
+  "$HOME/.local/share/opencode"
+  "$HOME/.local/share/opentui"
+  "$HOME/.local/state/mise"
+  "$HOME/.local/state/opencode"
+)
 
-mask_if_exists() {
-  if [[ -d "$1" ]]; then
-    BWRAP_ARGS+=(--tmpfs "$1")
-  fi
-}
+MASKED_DIRS=(
+  # Home Directory Secrets & Personal Folders
+  "$HOME/.ssh"
+  "$HOME/.gnupg"
+  "$HOME/.keepass"
+  "$HOME/.mozilla"
+  "$HOME/.pki"
+  "$HOME/Desktop"
+  "$HOME/Documents"
+  "$HOME/Downloads"
+  "$HOME/Games"
+  "$HOME/Music"
+  "$HOME/Photos"
+  "$HOME/Pictures"
+  "$HOME/Videos"
+  "$HOME/Work"
+  # "$HOME/Projects" # symlinks are evil, never again
 
-mask_file_if_exists() {
-  if [[ -f "$1" ]]; then
-    BWRAP_ARGS+=(--ro-bind "$EMPTY_FILE" "$1") # ro is crucial, prevents cross-contamination
-  fi
-}
+  # Caches to hide inside the writable ~/.cache
+  "$HOME/.cache/thumbnails"
+  "$HOME/.cache/BraveSoftware"
+  "$HOME/.cache/chromium"
+  "$HOME/.cache/mozilla"
+  "$HOME/.cache/torbrowser"
+  "$HOME/.cache/com.bitwarden.desktop"
+  "$HOME/.cache/keepassxc"
+  "$HOME/.cache/TelegramDesktop"
+  "$HOME/.cache/TeamSpeak"
 
-# 3. Writable System/Config directories (as requested for 'yolo' compatibility)
-bind_if_exists "$HOME/.claude"
-bind_if_exists "$HOME/.codex"
-bind_if_exists "$HOME/.copilot"
-bind_if_exists "$HOME/.gemini"
-bind_if_exists "$HOME/.pi"
+  # Configs to hide
+  "$HOME/.config/1Password"
+  "$HOME/.config/Bitwarden"
+  "$HOME/.config/keepassxc"
+  "$HOME/.config/BraveSoftware"
+  "$HOME/.config/chromium"
+  "$HOME/.config/google-chrome"
+  "$HOME/.config/google-chrome-beta"
+  "$HOME/.config/google-chrome-unstable"
+  "$HOME/.config/microsoft-edge"
+  "$HOME/.config/microsoft-edge-dev"
+  "$HOME/.config/mozilla"
+  "$HOME/.config/torbrowser"
+  "$HOME/.config/vivaldi"
+  "$HOME/.config/vivaldi-snapshot"
+  "$HOME/.config/discord"
+  "$HOME/.config/Signal"
+  "$HOME/.config/TeamSpeak"
+  "$HOME/.config/obsidian"
 
-# ~/.cache
-bind_if_exists "$HOME/.cache"
+  # Local states to hide
+  "$HOME/.local/share/keyrings"
+  "$HOME/.local/share/TelegramDesktop"
+  "$HOME/.local/share/torbrowser"
+  "$HOME/.local/share/Trash"
+)
 
-mask_if_exists "$HOME/.cache/thumbnails"
-mask_if_exists "$HOME/.cache/BraveSoftware"
-mask_if_exists "$HOME/.cache/chromium"
-mask_if_exists "$HOME/.cache/mozilla"
-mask_if_exists "$HOME/.cache/torbrowser"
-mask_if_exists "$HOME/.cache/com.bitwarden.desktop"
-mask_if_exists "$HOME/.cache/keepassxc"
-mask_if_exists "$HOME/.cache/TelegramDesktop"
-mask_if_exists "$HOME/.cache/TeamSpeak"
+MASKED_FILES=(
+  # Histories
+  "$HOME/.bash_history"
+  "$HOME/.mariadb_history"
+  "$HOME/.node_repl_history"
+  "$HOME/.psql_history"
+  "$HOME/.python_history"
+  
+  # some shit
+  "$HOME/.pulse-cookie"
+  "$HOME/default_pwtimer.json"
+  "$HOME/.my_file2"
+)
 
-# ~/.config
-# bind_if_exists "$HOME/.config"
-bind_if_exists "$HOME/.config/mise"
-bind_if_exists "$HOME/.config/opencode"
+# Apply Mounts in Strict Order
 
-mask_if_exists "$HOME/.config/1Password"
-mask_if_exists "$HOME/.config/Bitwarden"
-mask_if_exists "$HOME/.config/keepassxc"
-mask_if_exists "$HOME/.config/BraveSoftware"
-mask_if_exists "$HOME/.config/chromium"
-mask_if_exists "$HOME/.config/google-chrome"
-mask_if_exists "$HOME/.config/google-chrome-beta"
-mask_if_exists "$HOME/.config/google-chrome-unstable"
-mask_if_exists "$HOME/.config/microsoft-edge"
-mask_if_exists "$HOME/.config/microsoft-edge-dev"
-mask_if_exists "$HOME/.config/mozilla"
-mask_if_exists "$HOME/.config/torbrowser"
-mask_if_exists "$HOME/.config/vivaldi"
-mask_if_exists "$HOME/.config/vivaldi-snapshot"
-mask_if_exists "$HOME/.config/discord"
-mask_if_exists "$HOME/.config/Signal"
-mask_if_exists "$HOME/.config/TeamSpeak"
-mask_if_exists "$HOME/.config/obsidian"
-
-# ~/.local
-# bind_if_exists "$HOME/.local"
-bind_if_exists "$HOME/.local/share/mise"
-bind_if_exists "$HOME/.local/share/opencode"
-bind_if_exists "$HOME/.local/share/opentui"
-bind_if_exists "$HOME/.local/state/mise"
-bind_if_exists "$HOME/.local/state/opencode"
-
-mask_if_exists "$HOME/.local/share/keyrings"
-mask_if_exists "$HOME/.local/share/TelegramDesktop"
-mask_if_exists "$HOME/.local/share/torbrowser"
-mask_if_exists "$HOME/.local/share/Trash"
-
-
-
-# 4. Masked/Hidden Directories
-# These become completely empty read-write RAM disks. The agent cannot see your files.
-mask_if_exists "$HOME/.ssh"
-mask_if_exists "$HOME/.gnupg"
-mask_if_exists "$HOME/.keepass"
-mask_if_exists "$HOME/.mozilla"
-mask_if_exists "$HOME/.pki"
-mask_if_exists "$HOME/Desktop"
-mask_if_exists "$HOME/Documents"
-mask_if_exists "$HOME/Downloads"
-mask_if_exists "$HOME/Games"
-mask_if_exists "$HOME/Music"
-mask_if_exists "$HOME/Photos"
-mask_if_exists "$HOME/Pictures"
-# mask_if_exists "$HOME/Projects" # symlinks are evil
-mask_if_exists "$HOME/Videos"
-mask_if_exists "$HOME/Work"
-
-# 4.2 Masked/Hidden Files
-mask_file_if_exists "$HOME/.bash_history"
-mask_file_if_exists "$HOME/.mariadb_history"
-mask_file_if_exists "$HOME/.node_repl_history"
-mask_file_if_exists "$HOME/.psql_history"
-mask_file_if_exists "$HOME/.python_history"
-mask_file_if_exists "$HOME/.pulse-cookie"
-mask_file_if_exists "$HOME/default_pwtimer.json"
-mask_file_if_exists "$HOME/.my_file2"
-
-# 5. Whitelisted Workspace Directories
-for ws in "${WORKSPACES[@]}"; do
-  if [[ ! -d "$ws" ]]; then
-    echo "Warning: Workspace directory does not exist: $ws"
-    continue
-  fi
-  # Overrides the read-only root specifically for this folder
-  BWRAP_ARGS+=(--bind "$ws" "$ws")
+# Apply Writable Directories
+for dir in "${WRITABLE_DIRS[@]}"; do
+  if [[ -d "$dir" ]]; then BWRAP_ARGS+=(--bind "$dir" "$dir"); fi
 done
 
-# 6. Execute the target agent inside the sandbox
+# Apply Directory Masks (Tmpfs)
+for dir in "${MASKED_DIRS[@]}"; do
+  if [[ -d "$dir" ]]; then BWRAP_ARGS+=(--tmpfs "$dir"); fi
+done
+
+# Apply File Masks
+for file in "${MASKED_FILES[@]}"; do
+  if [[ -f "$file" ]]; then BWRAP_ARGS+=(--ro-bind "$EMPTY_FILE" "$file"); fi
+done
+
+# Whitelisted Workspace Directories
+for ws in "${WORKSPACES[@]}"; do
+  if [[ -d "$ws" ]]; then
+    # Overrides the read-only root specifically for this folder
+    BWRAP_ARGS+=(--bind "$ws" "$ws")
+  else
+    echo "Warning: Workspace directory does not exist: $ws"
+  fi
+done
+
+# Execute the target agent inside the sandbox
 # 'exec' replaces the current bash process with bwrap, passing signals cleanly.
 exec bwrap "${BWRAP_ARGS[@]}" "${COMMAND[@]}"
