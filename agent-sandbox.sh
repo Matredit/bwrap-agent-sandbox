@@ -46,6 +46,9 @@ BWRAP_ARGS=(
   --dev /dev     # Required for pseudoterminals (PTYs) and basic IO
   --proc /proc   # Required for process management
   --tmpfs /tmp   # Isolated scratchpad; prevents reading host /tmp sockets
+  --tmpfs "${XDG_RUNTIME_DIR:-/run/user/$UID}" # Fixes Neovim crashes
+  --tmpfs /var/tmp                             # maybe Needed for large compiler temps
+  --tmpfs /dev/shm                             # maybe Needed for Node/Python shared memory
 )
 
 # 3. Configuration Arrays (Declarative Setup)
@@ -69,6 +72,7 @@ WRITABLE_DIRS=(
   "$HOME/.local/share/opencode"
   "$HOME/.local/share/opentui"
   "$HOME/.local/state/mise"
+  "$HOME/.local/state/nvim"  # Fixes Neovim crashes
   "$HOME/.local/state/opencode"
 )
 
