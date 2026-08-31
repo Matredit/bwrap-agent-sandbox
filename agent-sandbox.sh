@@ -77,6 +77,7 @@ MASKED_DIRS=(
   "$HOME/.ssh"
   "$HOME/.gnupg"
   "$HOME/.keepass"
+  "$HOME/.ViberPC"
   "$HOME/.mozilla"
   "$HOME/.pki"
   "$HOME/Desktop"
