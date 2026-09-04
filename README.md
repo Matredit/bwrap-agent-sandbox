@@ -12,10 +12,14 @@ mv agent-sandbox.sh ~/.local/bin/agent-sandbox
 ```
 
 **Usage**  
-Pass one or more workspace directories using `-w`, followed by `--`, and then your agent command. The specified workspaces will be fully read-write.
+Pass one or more workspace directories using `-w`, optional read-only overrides with `-r` (or `-ro`, `--readonly`), followed by `--`, and then your agent command.
 
 ```bash
-agent-sandbox -w ./ -w ~/also-writable -- agy --dangerously-skip-permissions
+# Make project writable, but protect .git from modifications or accidental deletion
+agent-sandbox -w ./ -r .git -- agy --dangerously-skip-permissions
+
+# Multiple workspaces and read-only paths
+agent-sandbox -w ./ -w ~/also-writable -r .git -r .env -- agy --dangerously-skip-permissions
 ```
 
 **Configuration & Tweaking**  

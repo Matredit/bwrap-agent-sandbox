@@ -3,13 +3,14 @@
 set -euo pipefail
 
 WORKSPACES=()
+READONLY_PATHS=()
 COMMAND=()
 
 # Empty file instead of /dev/null for masking files
 EMPTY_FILE=$(mktemp)
 trap 'rm -f "$EMPTY_FILE"' EXIT  # Clean up automatically when script exits
 
-# 1. Parse arguments: Extract workspaces and the final command
+# 1. Parse arguments: Extract workspaces, readonly paths, and the final command
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -w|--workspace)
@@ -21,6 +22,14 @@ while [[ $# -gt 0 ]]; do
       WORKSPACES+=("$(realpath "$2")")
       shift 2
       ;;
+    -r|-ro|--ro|--readonly|--read-only)
+      if [[ -z "${2:-}" ]]; then
+        echo "Error: $1 requires a path argument."
+        exit 1
+      fi
+      READONLY_PATHS+=("$(realpath "$2")")
+      shift 2
+      ;;
     --)
       shift
       COMMAND=("$@")
@@ -28,7 +37,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Error: Invalid argument '$1'"
-      echo "Usage: $0 [-w /path/to/workspace]... -- <command> [args...]"
+      echo "Usage: $0 [-w /path/to/workspace]... [-r /path/to/readonly]... -- <command> [args...]"
       exit 1
       ;;
   esac
@@ -171,6 +180,15 @@ for ws in "${WORKSPACES[@]}"; do
     BWRAP_ARGS+=(--bind "$ws" "$ws")
   else
     echo "Warning: Workspace directory does not exist: $ws"
+  fi
+done
+
+# Read-Only Overrides (Must be applied after workspaces to override writable mounts)
+for ro in "${READONLY_PATHS[@]}"; do
+  if [[ -e "$ro" ]]; then
+    BWRAP_ARGS+=(--ro-bind "$ro" "$ro")
+  else
+    echo "Warning: Read-only path does not exist: $ro"
   fi
 done
 
