@@ -5,13 +5,27 @@ set -euo pipefail
 WORKSPACES=()
 OVERLAYS=()
 READONLY_PATHS=()
+CLI_MASKS=()
+STEALTH_MASK=false
 COMMAND=()
 
-# Empty file instead of /dev/null for masking files
+# Temporary files for masking
 EMPTY_FILE=$(mktemp)
-trap 'rm -f "$EMPTY_FILE"' EXIT  # Clean up automatically when script exits
+NOTICE_FILE=$(mktemp)
+trap 'rm -f "$EMPTY_FILE" "$NOTICE_FILE"' EXIT  # Clean up automatically when script exits
 
-# 1. Parse arguments: Extract workspaces, overlays, readonly paths, and the final command
+cat <<'EOF' > "$NOTICE_FILE"
+[SANDBOX NOTICE]
+This file or directory is masked by the Bubblewrap sandbox (agent-sandbox).
+Access to this content has been restricted to protect sensitive personal data or system integrity.
+
+If you are an AI coding agent and require access to this path to complete your task:
+- DO NOT assume this file or directory is missing, empty, or corrupted.
+- DO NOT attempt to recreate, overwrite, or bypass this restriction.
+- Please inform the user and ask them to grant access by updating their sandbox configuration or command-line flags.
+EOF
+
+# 1. Parse arguments: Extract workspaces, overlays, readonly paths, masks, and the final command
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -w|--workspace)
@@ -39,6 +53,18 @@ while [[ $# -gt 0 ]]; do
       READONLY_PATHS+=("$(realpath "$2")")
       shift 2
       ;;
+    -m|--mask)
+      if [[ -z "${2:-}" ]]; then
+        echo "Error: $1 requires a path argument."
+        exit 1
+      fi
+      CLI_MASKS+=("$(realpath "$2")")
+      shift 2
+      ;;
+    --stealth|--stealth-mask|--empty-mask|--ambiguous)
+      STEALTH_MASK=true
+      shift
+      ;;
     --)
       shift
       COMMAND=("$@")
@@ -46,7 +72,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Error: Invalid argument '$1'"
-      echo "Usage: $0 [-w /path/to/workspace]... [-o /path/to/overlay]... [-r /path/to/readonly]... -- <command> [args...]"
+      echo "Usage: $0 [-w /path/to/workspace]... [-o /path/to/overlay]... [-r /path/to/readonly]... [-m /path/to/mask]... [--stealth] -- <command> [args...]"
       exit 1
       ;;
   esac
@@ -174,12 +200,23 @@ done
 
 # Apply Directory Masks (Tmpfs)
 for dir in "${MASKED_DIRS[@]}"; do
-  if [[ -d "$dir" ]]; then BWRAP_ARGS+=(--tmpfs "$dir"); fi
+  if [[ -d "$dir" ]]; then
+    BWRAP_ARGS+=(--tmpfs "$dir")
+    if [[ "$STEALTH_MASK" == false ]]; then
+      BWRAP_ARGS+=(--ro-bind "$NOTICE_FILE" "$dir/README.txt")
+    fi
+  fi
 done
 
 # Apply File Masks
 for file in "${MASKED_FILES[@]}"; do
-  if [[ -f "$file" ]]; then BWRAP_ARGS+=(--ro-bind "$EMPTY_FILE" "$file"); fi
+  if [[ -f "$file" ]]; then
+    if [[ "$STEALTH_MASK" == false ]]; then
+      BWRAP_ARGS+=(--ro-bind "$NOTICE_FILE" "$file")
+    else
+      BWRAP_ARGS+=(--ro-bind "$EMPTY_FILE" "$file")
+    fi
+  fi
 done
 
 # Whitelisted Workspace Directories
@@ -207,6 +244,24 @@ for ro in "${READONLY_PATHS[@]}"; do
     BWRAP_ARGS+=(--ro-bind "$ro" "$ro")
   else
     echo "Warning: Read-only path does not exist: $ro"
+  fi
+done
+
+# CLI Mask Overrides (Must be applied after workspaces/overlays to mask paths inside them)
+for target in "${CLI_MASKS[@]}"; do
+  if [[ -d "$target" ]]; then
+    BWRAP_ARGS+=(--tmpfs "$target")
+    if [[ "$STEALTH_MASK" == false ]]; then
+      BWRAP_ARGS+=(--ro-bind "$NOTICE_FILE" "$target/README.txt")
+    fi
+  elif [[ -f "$target" ]]; then
+    if [[ "$STEALTH_MASK" == false ]]; then
+      BWRAP_ARGS+=(--ro-bind "$NOTICE_FILE" "$target")
+    else
+      BWRAP_ARGS+=(--ro-bind "$EMPTY_FILE" "$target")
+    fi
+  else
+    echo "Warning: Mask path does not exist: $target"
   fi
 done
 

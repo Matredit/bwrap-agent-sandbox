@@ -13,7 +13,7 @@ mv agent-sandbox.sh ~/.local/bin/agent-sandbox
 ```
 
 **Usage**  
-Pass one or more workspace directories using `-w` (read-write), `-o` (ephemeral copy-on-write overlayfs), `-r` (read-only overrides), followed by `--`, and then your agent command.
+Pass one or more workspace directories using `-w` (read-write), `-o` (ephemeral copy-on-write overlayfs), `-r` (read-only overrides), `-m` (mask files or directories), followed by `--`, and then your agent command.
 
 ```bash
 # Make project writable, but protect .git from modifications or accidental deletion
@@ -25,8 +25,14 @@ agent-sandbox -o ./ -- agy --dangerously-skip-permissions
 # Ephemeral overlay with .git locked read-only
 agent-sandbox -o ./ -r .git -- opencode --auto
 
-# Multiple workspaces, overlays, and read-only paths
-agent-sandbox -w ~/persistent-dir -o ./ -r .git -r .env -- agy --dangerously-skip-permissions
+# Mask sensitive files or directories inside a workspace (leaves an informative read-only README notice)
+agent-sandbox -w ./ -m .env -m private_folder -- agy
+
+# Use old ambiguous masking (empty directory and 0-byte file without notice)
+agent-sandbox -w ./ -m .env --stealth -- agy
+
+# Combine workspaces, overlays, read-only paths, and masked paths
+agent-sandbox -w ~/persistent-dir -o ./ -r .git -m .env -- agy --dangerously-skip-permissions
 ```
 
 **Configuration & Tweaking**  
