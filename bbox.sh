@@ -259,7 +259,7 @@ DEFAULT_MASKED=(
 add_writable() {
   if [[ -d "$1" ]]; then
     BWRAP_ARGS+=(--bind "$1" "$1")
-  else
+  elif [[ -z "$2" ]]; then
     echo "Warning: Writable directory does not exist: $1"
   fi
 }
@@ -292,7 +292,7 @@ add_mask() {
     else
       BWRAP_ARGS+=(--ro-bind "$EMPTY_FILE" "$1")
     fi
-  else
+  elif [[ -z "$2" ]]; then
     echo "Warning: Mask path does not exist: $1"
   fi
 }
@@ -303,11 +303,11 @@ add_mask() {
 
 # / is already readonly
 for dir in "${DEFAULT_WRITABLE_DIRS[@]}"; do
-  add_writable "$dir"
+  add_writable "$dir" quiet
 done
 
 for dir in "${DEFAULT_MASKED[@]}"; do
-  add_mask "$dir"
+  add_mask "$dir" quiet
 done
 
 # PRESETS
