@@ -13,26 +13,41 @@ mv agent-sandbox.sh ~/.local/bin/agent-sandbox
 ```
 
 **Usage**  
-Pass one or more workspace directories using `-w` (read-write), `-o` (ephemeral copy-on-write overlayfs), `-r` (read-only overrides), `-m` (mask files or directories), followed by `--`, and then your agent command.
+
+### 1. Preset Shortcuts (Quick Launch)
+When launching an agent from your project folder, you can use built-in presets. By default, the current directory (`.`) is mounted as your writable workspace and `.git` is protected as read-only.
 
 ```bash
-# Make project writable, but protect .git from modifications or accidental deletion
+# Antigravity CLI (agy --dangerously-skip-permissions)
+agent-sandbox g              # Standard: project writable, .git read-only
+agent-sandbox g -o           # Ephemeral OverlayFS: changes stay in RAM, discarded on exit
+agent-sandbox g -r           # Read-Only: project is strictly read-only
+
+# OpenCode (opencode --auto)
+agent-sandbox oc             # Standard: project writable, .git read-only
+agent-sandbox oc -o          # Ephemeral OverlayFS
+
+# Claude (claude --dangerously-skip-permissions)
+agent-sandbox c
+
+# Pass extra flags or prompts to the agent cleanly using '--'
+agent-sandbox g -- "explain this codebase"
+agent-sandbox g -o -- -c     # Continue recent conversation in overlay mode
+agent-sandbox g -m .env      # Mask .env with read-only notice
+```
+
+### 2. Classic Full Syntax
+If you need custom commands or specific workspace configurations:
+
+```bash
+# Explicit workspaces and read-only overrides
 agent-sandbox -w ./ -r .git -- agy --dangerously-skip-permissions
 
-# Ephemeral / disposable mode: agent can create/edit/delete files, but changes stay in RAM and are discarded on exit
-agent-sandbox -o ./ -- agy --dangerously-skip-permissions
-
-# Ephemeral overlay with .git locked read-only
-agent-sandbox -o ./ -r .git -- opencode --auto
-
-# Mask sensitive files or directories inside a workspace (leaves an informative read-only README notice)
-agent-sandbox -w ./ -m .env -m private_folder -- agy
+# Ephemeral overlay with masked files
+agent-sandbox -o ./ -r .git -m .env -- opencode --auto
 
 # Use old ambiguous masking (empty directory and 0-byte file without notice)
 agent-sandbox -w ./ -m .env --stealth -- agy
-
-# Combine workspaces, overlays, read-only paths, and masked paths
-agent-sandbox -w ~/persistent-dir -o ./ -r .git -m .env -- agy --dangerously-skip-permissions
 ```
 
 **Configuration & Tweaking**  

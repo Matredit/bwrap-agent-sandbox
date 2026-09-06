@@ -2,12 +2,25 @@
 # agent-sandbox - A Bubblewrap wrapper for CLI coding agents
 set -euo pipefail
 
+# Preset Aliases: map shortcut name to default agent command
+# Easily edit or add custom agent presets here
+declare -A PRESETS=(
+  [g]="agy --dangerously-skip-permissions"
+  [agy]="agy --dangerously-skip-permissions"
+  [oc]="opencode --auto"
+  [opencode]="opencode --auto"
+)
+
 WORKSPACES=()
 OVERLAYS=()
 READONLY_PATHS=()
 CLI_MASKS=()
 STEALTH_MASK=false
 COMMAND=()
+
+CWD_MODE=""
+PROTECT_GIT=true
+PRESET_SELECTED=""
 
 # Temporary files for masking
 EMPTY_FILE=$(mktemp)
@@ -25,41 +38,53 @@ If you are an AI coding agent and require access to this path to complete your t
 - Please inform the user and ask them to grant access by updating their sandbox configuration or command-line flags.
 EOF
 
-# 1. Parse arguments: Extract workspaces, overlays, readonly paths, masks, and the final command
+# 1. Parse arguments: Handle presets, mode flags, paths, masks, and commands
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -w|--workspace)
-      if [[ -z "${2:-}" ]]; then
-        echo "Error: -w requires a directory argument."
-        exit 1
+      # If followed by an existing directory, mount that directory as workspace
+      if [[ -n "${2:-}" && "$2" != -* && "$2" != "--" && -d "$2" ]]; then
+        WORKSPACES+=("$(realpath "$2")")
+        shift 2
+      else
+        # Bare -w: set CWD mode to write
+        CWD_MODE="write"
+        shift
       fi
-      # Resolve to absolute path to prevent bwrap symlink/relative path errors
-      WORKSPACES+=("$(realpath "$2")")
-      shift 2
       ;;
     -o|--overlay)
-      if [[ -z "${2:-}" ]]; then
-        echo "Error: $1 requires a directory argument."
-        exit 1
+      # If followed by an existing directory, mount that directory as overlay
+      if [[ -n "${2:-}" && "$2" != -* && "$2" != "--" && -d "$2" ]]; then
+        OVERLAYS+=("$(realpath "$2")")
+        shift 2
+      else
+        # Bare -o: set CWD mode to overlay
+        CWD_MODE="overlay"
+        shift
       fi
-      OVERLAYS+=("$(realpath "$2")")
-      shift 2
       ;;
     -r|-ro|--ro|--readonly|--read-only)
-      if [[ -z "${2:-}" ]]; then
-        echo "Error: $1 requires a path argument."
-        exit 1
+      # If followed by an existing file/directory, mount that path as read-only
+      if [[ -n "${2:-}" && "$2" != -* && "$2" != "--" && -e "$2" ]]; then
+        READONLY_PATHS+=("$(realpath "$2")")
+        shift 2
+      else
+        # Bare -r: set CWD mode to readonly
+        CWD_MODE="readonly"
+        shift
       fi
-      READONLY_PATHS+=("$(realpath "$2")")
-      shift 2
       ;;
     -m|--mask)
-      if [[ -z "${2:-}" ]]; then
+      if [[ -z "${2:-}" || "$2" == -* || "$2" == "--" ]]; then
         echo "Error: $1 requires a path argument."
         exit 1
       fi
       CLI_MASKS+=("$(realpath "$2")")
       shift 2
+      ;;
+    --allow-git|--git-write|--no-protect-git)
+      PROTECT_GIT=false
+      shift
       ;;
     --stealth|--stealth-mask|--empty-mask|--ambiguous)
       STEALTH_MASK=true
@@ -67,20 +92,79 @@ while [[ $# -gt 0 ]]; do
       ;;
     --)
       shift
-      COMMAND=("$@")
+      if [[ -n "$PRESET_SELECTED" ]]; then
+        # Append extra arguments to the preset command
+        COMMAND+=("$@")
+      else
+        # Classic syntax: user supplies the entire command
+        COMMAND=("$@")
+      fi
       break
       ;;
     *)
-      echo "Error: Invalid argument '$1'"
-      echo "Usage: $0 [-w /path/to/workspace]... [-o /path/to/overlay]... [-r /path/to/readonly]... [-m /path/to/mask]... [--stealth] -- <command> [args...]"
-      exit 1
+      # Check if argument matches a registered preset alias
+      if [[ -n "${PRESETS[$1]:-}" ]]; then
+        PRESET_SELECTED="$1"
+        read -ra CMD_ARRAY <<< "${PRESETS[$1]}"
+        COMMAND=("${CMD_ARRAY[@]}")
+        # Presets default to CWD writable, unless modified by -o or -r
+        if [[ -z "$CWD_MODE" ]]; then
+          CWD_MODE="write"
+        fi
+        shift
+      else
+        echo "Error: Invalid argument '$1'"
+        echo ""
+        echo "Usage:"
+        echo "  $0 <preset> [-o|-r|-w] [-m path]... [-- [agent-args...]]"
+        echo "  $0 [-w dir]... [-o dir]... [-r path]... [-m path]... -- <command> [args...]"
+        echo ""
+        echo "Available presets: ${!PRESETS[*]}"
+        exit 1
+      fi
       ;;
   esac
 done
 
+# Apply CWD mode if set (presets default to write, modified by -o or -r)
+CWD="$(realpath ".")"
+if [[ "$CWD_MODE" == "write" ]]; then
+  if [[ ! " ${WORKSPACES[*]} " =~ " ${CWD} " ]]; then
+    WORKSPACES+=("$CWD")
+  fi
+elif [[ "$CWD_MODE" == "overlay" ]]; then
+  if [[ ! " ${OVERLAYS[*]} " =~ " ${CWD} " ]]; then
+    OVERLAYS+=("$CWD")
+  fi
+elif [[ "$CWD_MODE" == "readonly" ]]; then
+  if [[ ! " ${READONLY_PATHS[*]} " =~ " ${CWD} " ]]; then
+    READONLY_PATHS+=("$CWD")
+  fi
+fi
+
+# Protect .git by default if CWD is the active workspace and .git exists
+if [[ -n "$CWD_MODE" && "$PROTECT_GIT" == true ]]; then
+  if [[ -e "$CWD/.git" ]]; then
+    GIT_PATH="$(realpath "$CWD/.git")"
+    if [[ ! " ${READONLY_PATHS[*]} " =~ " ${GIT_PATH} " ]]; then
+      READONLY_PATHS+=("$GIT_PATH")
+    fi
+  fi
+fi
+
 if [[ ${#COMMAND[@]} -eq 0 ]]; then
-  echo "Error: No command provided after '--'."
-  echo "Usage: $0 -w ./my-project -- antigravity-cli"
+  echo "Error: No agent preset or command provided."
+  echo ""
+  echo "Usage:"
+  echo "  $0 <preset> [-o|-r|-w] [-m path]... [-- [agent-args...]]"
+  echo "  $0 [-w dir]... [-o dir]... [-r path]... [-m path]... -- <command> [args...]"
+  echo ""
+  echo "Available presets: ${!PRESETS[*]}"
+  echo ""
+  echo "Modes for current directory:"
+  echo "  (default)  Read-write workspace with .git protected as read-only"
+  echo "  -o         Ephemeral OverlayFS (all changes in RAM, discarded on exit)"
+  echo "  -r         Read-only workspace (no writes allowed anywhere in project)"
   exit 1
 fi
 
@@ -264,6 +348,13 @@ for target in "${CLI_MASKS[@]}"; do
     echo "Warning: Mask path does not exist: $target"
   fi
 done
+
+if [[ "${DRY_RUN:-0}" == "1" ]]; then
+  echo "COMMAND: ${COMMAND[*]}"
+  printf 'BWRAP_ARGS:\n'
+  printf '  %s\n' "${BWRAP_ARGS[@]}"
+  exit 0
+fi
 
 # Execute the target agent inside the sandbox
 # 'exec' replaces the current bash process with bwrap, passing signals cleanly.
