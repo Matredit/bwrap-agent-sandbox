@@ -20,6 +20,7 @@ CLI_MASKS=()
 PRESET_SELECTED=""
 CWD_MODE="" # write | overlay | readonly | masked?
 STEALTH_MASK=false
+GIT_CHANGE_IN_PRESET=true
 
 BWRAP_ARGS=(
   --ro-bind / /  # The core rule: Entire host is read-only
@@ -83,6 +84,7 @@ while [[ $# -gt 0 ]]; do
       else
         # Bare -w: set CWD mode to write
         CWD_MODE="write"
+        GIT_CHANGE_IN_PRESET=false
         shift
       fi
       ;;
@@ -327,7 +329,7 @@ case "$CWD_MODE" in
 esac
 
 # .git is READONLY by default if PRESET if used
-if [[ -e "$CWD/.git" && "$CWD_MODE" == "write" ]]; then
+if [[ -e "$CWD/.git" && "$CWD_MODE" == "write" && GIT_CHANGE_IN_PRESET == true ]]; then
   GIT_PATH="$(realpath "$CWD/.git")"
   add_readonly "$GIT_PATH"
 fi
