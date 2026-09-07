@@ -221,21 +221,30 @@ test_live_default_write_and_git_protect() {
   local repo="$TEST_ROOT/live_default"
   setup_test_repo "$repo"
 
-  ( cd "$repo" && "$TARGET" -w -- bash -c 'echo "edit" >> file.txt && touch new.txt' )
+  # Create mock agent inside repo (since /tmp is isolated inside the sandbox)
+  mkdir -p "$repo/bin"
+  cat << 'EOF' > "$repo/bin/agy"
+#!/usr/bin/env bash
+while [[ $# -gt 0 && "$1" == -* ]]; do shift; done
+exec "$@"
+EOF
+  chmod +x "$repo/bin/agy"
+
+  ( cd "$repo" && PATH="$repo/bin:$PATH" "$TARGET" g -- bash -c 'echo "edit" >> file.txt && touch new.txt' )
   local can_write=0
   if [[ -f "$repo/new.txt" ]] && grep -q "edit" "$repo/file.txt"; then
     can_write=1
   fi
 
   local git_blocked=0
-  if ( cd "$repo" && "$TARGET" -w -- bash -c 'touch .git/leak.txt 2>/dev/null || exit 0; exit 1' ); then
+  if ( cd "$repo" && PATH="$repo/bin:$PATH" "$TARGET" g -- bash -c 'touch .git/leak.txt 2>/dev/null || exit 0; exit 1' ); then
     git_blocked=1
   fi
 
   if [[ $can_write -eq 1 && $git_blocked -eq 1 && ! -f "$repo/.git/leak.txt" ]]; then
-    pass "Live: CWD is fully writable, but .git is strictly protected from writes"
+    pass "Live: Preset default makes CWD writable and strictly protects .git"
   else
-    fail "Live: Default write or .git protection failed" "can_write=$can_write, git_blocked=$git_blocked"
+    fail "Live: Preset default write or .git protection failed" "can_write=$can_write, git_blocked=$git_blocked"
   fi
 }
 test_live_default_write_and_git_protect
@@ -244,6 +253,23 @@ test_live_git_writable_override() {
   local repo="$TEST_ROOT/live_git_write"
   setup_test_repo "$repo"
 
+  mkdir -p "$repo/bin"
+  cat << 'EOF' > "$repo/bin/agy"
+#!/usr/bin/env bash
+while [[ $# -gt 0 && "$1" == -* ]]; do shift; done
+exec "$@"
+EOF
+  chmod +x "$repo/bin/agy"
+
+  # Test 1: Bare -w in preset ('bbox g -w') makes .git writable
+  (
+    cd "$repo"
+    PATH="$repo/bin:$PATH" "$TARGET" g -w -- bash -c '
+      touch .git/allowed_via_bare_w.txt 2>/dev/null || true
+    '
+  )
+
+  # Test 2: Explicit '-w .git' makes .git writable
   (
     cd "$repo"
     "$TARGET" -w -w .git -- bash -c '
@@ -251,10 +277,10 @@ test_live_git_writable_override() {
     '
   )
 
-  if [[ -f "$repo/.git/allowed_write.txt" ]]; then
-    pass "Live: Explicit '-w .git' allows writing to .git when user intends it"
+  if [[ -f "$repo/.git/allowed_via_bare_w.txt" && -f "$repo/.git/allowed_write.txt" ]]; then
+    pass "Live: Both bare '-w' in preset and explicit '-w .git' make .git writable"
   else
-    fail "Live: Explicit '-w .git' failed to make .git writable"
+    fail "Live: Failed to make .git writable"
   fi
 }
 test_live_git_writable_override
