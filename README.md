@@ -8,9 +8,12 @@ Designed for Omarchy Linux, where agents run by default without sandboxing in by
 
 Requires `bubblewrap`.
 
+Install the latest version directly from GitHub:
+
 ```bash
-chmod +x bbox.sh
-mv bbox.sh ~/.local/bin/bbox
+mkdir -p ~/.local/bin
+curl -fsSL https://raw.githubusercontent.com/Matredit/bwrap-agent-sandbox/master/bbox.sh -o ~/.local/bin/bbox
+chmod +x ~/.local/bin/bbox
 ```
 
 ### Usage
