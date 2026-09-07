@@ -5,9 +5,28 @@ set -euo pipefail
 # Preset Aliases: map shortcut name to default agent command
 declare -A PRESETS=(
   [g]="agy --dangerously-skip-permissions"
-  [agy]="agy --dangerously-skip-permissions"
   [oc]="opencode --auto"
+  [cp]="copilot --allow-all"
+  [cr]="crush --yolo"
+  [gr]="grok --permission-mode bypassPermissions"
+  [cd]="codex --approve-for-me"
+  [op]="omp --auto-approve"
+  [pi]="pi" # yolo by default ❤️
+
+  [agy]="agy --dangerously-skip-permissions"
   [opencode]="opencode --auto"
+  [copilot]="copilot --allow-all"
+  [crush]="crush --yolo"
+  [grok]="grok --permission-mode bypassPermissions"
+  [codex]="codex --approve-for-me"
+  [omp]="omp --auto-approve"
+
+  # omarchy aliases
+  [a]="omarchy-agent --inline"
+  [c]="opencode --auto"
+  [cx]="claude --permission-mode auto"
+  # [cx]="printf '\033[2J\033[3J\033[H' && claude --permission-mode auto" # alias was like this for some reason
+  [cy]="codex --approve-for-me"
 )
 
 COMMAND=()
