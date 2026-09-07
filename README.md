@@ -1,4 +1,4 @@
-# bwrap box
+#  Bubblewrap Sandbox
 
 A simple Bubblewrap sandbox for CLI coding agents.
 
