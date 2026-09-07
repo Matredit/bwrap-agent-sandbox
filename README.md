@@ -50,6 +50,7 @@ bbox -w . -r .git -- agy --dangerously-skip-permissions
 
 You can change how the current working directory is mounted using bare `-w`, `-r`, or `-o` flags (without a path):
 
+- `bbox g -w` makes the whole workspace writable, including `.git`.
 - `bbox g -r` makes the current directory strictly read-only.
 - `bbox g -o` mounts the current directory as an ephemeral overlay.
 
@@ -74,9 +75,21 @@ bbox -w . -r .git -- agy --dangerously-skip-permissions -i "hello"
 Presets, default writable paths, and masked paths are easy to edit directly in the script.
 If you only care about protecting your personal files, mask just those and leave `.config` and other folders writable to get the most out of your Omarchy [malleable](https://world.hey.com/dhh/the-malleable-computer-7c187a9b) computer.
 
+To see all available presets and aliases, you can check the top of the script:
+
+```bash
+head -n 35 ~/.local/bin/bbox
+```
+
+To preview the generated Bubblewrap command without running it, use `DRY_RUN=1`:
+
+```bash
+DRY_RUN=1 bbox g
+```
+
 ### Quirks
 
-I don't know everything that needs to be mounted and what doesn't. I tried not to make sandboxing useless by exposing all of `XDG_RUNTIME_DIR`, so some things might not work smoothly, and some editors might fail if they need their own local state directory.
+I am not sure about what needs to be mounted and what doesn't. I tried not to make sandboxing useless by exposing all of `XDG_RUNTIME_DIR`, so some things might not work smoothly, and some editors might fail if they need their own local state directory.
 
 - **Copying in Neovim doesn't work:**
 

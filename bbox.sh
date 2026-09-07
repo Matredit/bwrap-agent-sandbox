@@ -348,7 +348,7 @@ case "$CWD_MODE" in
 esac
 
 # .git is READONLY by default if PRESET if used
-if [[ -e "$CWD/.git" && "$CWD_MODE" == "write" && GIT_CHANGE_IN_PRESET == true ]]; then
+if [[ -e "$CWD/.git" && "$CWD_MODE" == "write" && "$GIT_CHANGE_IN_PRESET" == true ]]; then
   GIT_PATH="$(realpath "$CWD/.git")"
   add_readonly "$GIT_PATH"
 fi
