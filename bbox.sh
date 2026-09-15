@@ -191,6 +191,12 @@ DEFAULT_WRITABLE_DIRS=(
   # Base Cache
   "$HOME/.cache"
   
+  # Dev tool caches & package stores
+  "$HOME/.npm"
+  "$HOME/.local/share/pnpm"
+  "$HOME/.yarn"
+  "$HOME/.bun"
+  
   # Specific Configs
   "$HOME/.config/mise"
   "$HOME/.config/opencode"
